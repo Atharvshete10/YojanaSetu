@@ -1,60 +1,121 @@
-import { getDb } from '../database/db.js';
+const { query } = require('../config/database');
 
 class RecruitmentModel {
-    static async getAll({ state, search, qualification, department, sort, limit = 10, offset = 0 }) {
-        const db = await getDb();
-        let query = 'SELECT * FROM recruitments WHERE 1=1';
+    static async getAll({ state, search, sort, limit = 10, offset = 0 }) {
+        let queryText = `
+      SELECT * FROM recruitments 
+      WHERE status = 'approved'
+    `;
         const params = [];
+        let paramCount = 0;
 
         if (state) {
-            query += ' AND state = ?';
+            paramCount++;
+            queryText += ` AND state = $${paramCount}`;
             params.push(state);
         }
 
         if (search) {
-            query += ' AND post_name LIKE ?';
+            paramCount++;
+            queryText += ` AND (post_name ILIKE $${paramCount} OR organization ILIKE $${paramCount})`;
             params.push(`%${search}%`);
         }
 
-        if (qualification) {
-            query += ' AND qualification LIKE ?';
-            params.push(`%${qualification}%`);
-        }
-
-        if (department) {
-            query += ' AND organization LIKE ?';
-            params.push(`%${department}%`);
-        }
-
-        if (sort === 'deadline') {
-            query += ' ORDER BY application_end_date ASC';
-        } else if (sort === 'a-z') {
-            query += ' ORDER BY post_name ASC';
+        if (sort === 'a-z') {
+            queryText += ' ORDER BY post_name ASC';
+        } else if (sort === 'z-a') {
+            queryText += ' ORDER BY post_name DESC';
+        } else if (sort === 'deadline') {
+            queryText += ' ORDER BY application_end_date ASC';
         } else {
-            query += ' ORDER BY created_at DESC';
+            queryText += ' ORDER BY created_at DESC';
         }
 
-        query += ' LIMIT ? OFFSET ?';
-        params.push(limit, offset);
+        paramCount++;
+        queryText += ` LIMIT $${paramCount}`;
+        params.push(limit);
 
-        const rows = await db.all(query, params);
+        paramCount++;
+        queryText += ` OFFSET $${paramCount}`;
+        params.push(offset);
 
-        let countQuery = 'SELECT COUNT(*) as total FROM recruitments WHERE 1=1';
+        const result = await query(queryText, params);
+
+        let countQuery = `SELECT COUNT(*) as total FROM recruitments WHERE status = 'approved'`;
         const countParams = [];
-        if (state) { countQuery += ' AND state = ?'; countParams.push(state); }
-        if (search) { countQuery += ' AND post_name LIKE ?'; countParams.push(`%${search}%`); }
-        if (qualification) { countQuery += ' AND qualification LIKE ?'; countParams.push(`%${qualification}%`); }
-        if (department) { countQuery += ' AND organization LIKE ?'; countParams.push(`%${department}%`); }
+        let countParamCount = 0;
 
-        const total = await db.get(countQuery, countParams);
+        if (state) {
+            countParamCount++;
+            countQuery += ` AND state = $${countParamCount}`;
+            countParams.push(state);
+        }
 
-        return { data: rows, total: total.total };
+        if (search) {
+            countParamCount++;
+            countQuery += ` AND (post_name ILIKE $${countParamCount} OR organization ILIKE $${countParamCount})`;
+            countParams.push(`%${search}%`);
+        }
+
+        const countResult = await query(countQuery, countParams);
+
+        return {
+            data: result.rows,
+            total: parseInt(countResult.rows[0].total)
+        };
     }
 
     static async getById(id) {
-        const db = await getDb();
-        return await db.get('SELECT * FROM recruitments WHERE id = ?', [id]);
+        const result = await query(
+            'SELECT * FROM recruitments WHERE id = $1 AND status = $2',
+            [id, 'approved']
+        );
+        return result.rows[0];
+    }
+
+    static async create(data, adminId) {
+        const result = await query(
+            `INSERT INTO recruitments (
+        post_name, organization, state, ministry, qualification, vacancy_count,
+        application_start_date, application_end_date, age_limit, selection_process,
+        application_fee, documents_required, official_notification_link,
+        source_url, source_website, status, approved_by, approved_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
+      RETURNING *`,
+            [
+                data.post_name, data.organization, data.state, data.ministry,
+                data.qualification, data.vacancy_count, data.application_start_date,
+                data.application_end_date, data.age_limit, data.selection_process,
+                data.application_fee, data.documents_required, data.official_notification_link,
+                data.source_url, data.source_website, 'approved', adminId
+            ]
+        );
+        return result.rows[0];
+    }
+
+    static async update(id, data) {
+        const result = await query(
+            `UPDATE recruitments SET
+        post_name = COALESCE($1, post_name),
+        organization = COALESCE($2, organization),
+        state = COALESCE($3, state),
+        ministry = COALESCE($4, ministry),
+        qualification = COALESCE($5, qualification),
+        vacancy_count = COALESCE($6, vacancy_count),
+        application_end_date = COALESCE($7, application_end_date)
+      WHERE id = $8
+      RETURNING *`,
+            [
+                data.post_name, data.organization, data.state, data.ministry,
+                data.qualification, data.vacancy_count, data.application_end_date, id
+            ]
+        );
+        return result.rows[0];
+    }
+
+    static async delete(id) {
+        await query('DELETE FROM recruitments WHERE id = $1', [id]);
     }
 }
 
-export default RecruitmentModel;
+module.exports = RecruitmentModel;

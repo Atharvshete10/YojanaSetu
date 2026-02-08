@@ -1,53 +1,106 @@
-import express from 'express';
-import cors from 'cors';
-import morgan from 'morgan';
-import bodyParser from 'body-parser';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname, join, resolve } from 'path';
-import dotenv from 'dotenv';
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+const bodyParser = require('body-parser');
+const path = require('path');
 
-import schemeRoutes from './routes/schemeRoutes.js';
-import tenderRoutes from './routes/tenderRoutes.js';
-import recruitmentRoutes from './routes/recruitmentRoutes.js';
-import statRoutes from './routes/statRoutes.js';
-import { initDb } from './database/db.js';
+// Import config and middleware
+const config = require('./config/env');
+const { errorHandler, notFound } = require('./middleware/errorHandler');
+const logger = require('./services/logger');
+const scheduler = require('./services/scheduler');
 
-dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Import routes
+const publicRoutes = require('./routes/publicRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const schemeRoutes = require('./routes/schemeRoutes');
+const eligibilityRoutes = require('./routes/eligibilityRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = config.server.port;
 
+// ============================================
+// MIDDLEWARE
+// ============================================
 
-
-// Middleware
 app.use(cors());
 app.use(morgan('dev'));
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-const publicPath = resolve(__dirname, 'public');
-app.use(express.static(publicPath));
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/admin', express.static(path.join(__dirname, 'admin')));
 
-// Routes
+// ============================================
+// API ROUTES
+// ============================================
+
+app.use('/api', publicRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/schemes', schemeRoutes);
-app.use('/api/tenders', tenderRoutes);
-app.use('/api/recruitments', recruitmentRoutes);
-app.use('/api/stats', statRoutes);
+app.use('/api/eligibility', eligibilityRoutes);
 
-// Fallback for SPA
-app.get('*', (req, res) => {
-    res.sendFile(resolve('src/public/index.html'));
-});
-
-// Initialize DB and Start Server
-initDb().then(() => {
-    app.listen(PORT, () => {
-        console.log(`Server is running on http://localhost:${PORT}`);
+// Health check
+app.get('/health', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Server is running',
+        timestamp: new Date().toISOString()
     });
-}).catch(err => {
-    console.error('Failed to initialize database:', err);
 });
 
+// ============================================
+// SPA FALLBACK
+// ============================================
+
+// Public frontend
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Admin dashboard
+app.get('/admin*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin', 'index.html'));
+});
+
+// ============================================
+// ERROR HANDLING
+// ============================================
+
+app.use(notFound);
+app.use(errorHandler);
+
+// ============================================
+// START SERVER
+// ============================================
+
+app.listen(PORT, async () => {
+    logger.info(`✓ Server running on http://localhost:${PORT}`);
+    logger.info(`✓ Environment: ${config.server.env}`);
+    logger.info(`✓ Public API: http://localhost:${PORT}/api`);
+    logger.info(`✓ Admin API: http://localhost:${PORT}/api/admin`);
+    logger.info(`✓ Admin Dashboard: http://localhost:${PORT}/admin`);
+
+    // Start crawler scheduler
+    try {
+        await scheduler.start();
+        logger.info('✓ Crawler scheduler started');
+    } catch (error) {
+        logger.error('Failed to start crawler scheduler:', error);
+    }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    logger.info('SIGTERM received, shutting down gracefully');
+    scheduler.stop();
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    logger.info('SIGINT received, shutting down gracefully');
+    scheduler.stop();
+    process.exit(0);
+});

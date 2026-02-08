@@ -1,48 +1,130 @@
-import { getDb } from '../database/db.js';
+const { query } = require('../config/database');
 
 class SchemeModel {
+    // Get all approved schemes with filters
     static async getAll({ state, search, sort, limit = 10, offset = 0 }) {
-        const db = await getDb();
-        let query = 'SELECT * FROM schemes WHERE 1=1';
+        let queryText = `
+      SELECT * FROM schemes 
+      WHERE status = 'approved'
+    `;
         const params = [];
+        let paramCount = 0;
 
         if (state) {
-            query += ' AND state = ?';
+            paramCount++;
+            queryText += ` AND state = $${paramCount}`;
             params.push(state);
         }
 
         if (search) {
-            query += ' AND title LIKE ?';
+            paramCount++;
+            queryText += ` AND (title ILIKE $${paramCount} OR description ILIKE $${paramCount})`;
             params.push(`%${search}%`);
         }
 
+        // Sorting
         if (sort === 'a-z') {
-            query += ' ORDER BY title ASC';
+            queryText += ' ORDER BY title ASC';
         } else if (sort === 'z-a') {
-            query += ' ORDER BY title DESC';
+            queryText += ' ORDER BY title DESC';
         } else if (sort === 'deadline') {
-            query += ' ORDER BY end_date ASC';
+            queryText += ' ORDER BY end_date ASC';
         } else {
-            query += ' ORDER BY created_at DESC';
+            queryText += ' ORDER BY created_at DESC';
         }
 
-        query += ' LIMIT ? OFFSET ?';
-        params.push(limit, offset);
+        paramCount++;
+        queryText += ` LIMIT $${paramCount}`;
+        params.push(limit);
 
-        const rows = await db.all(query, params);
-        const countQuery = 'SELECT COUNT(*) as total FROM schemes WHERE 1=1' + (state ? ' AND state = ?' : '') + (search ? ' AND title LIKE ?' : '');
+        paramCount++;
+        queryText += ` OFFSET $${paramCount}`;
+        params.push(offset);
+
+        const result = await query(queryText, params);
+
+        // Get total count
+        let countQuery = `SELECT COUNT(*) as total FROM schemes WHERE status = 'approved'`;
         const countParams = [];
-        if (state) countParams.push(state);
-        if (search) countParams.push(`%${search}%`);
-        const total = await db.get(countQuery, countParams);
+        let countParamCount = 0;
 
-        return { data: rows, total: total.total };
+        if (state) {
+            countParamCount++;
+            countQuery += ` AND state = $${countParamCount}`;
+            countParams.push(state);
+        }
+
+        if (search) {
+            countParamCount++;
+            countQuery += ` AND (title ILIKE $${countParamCount} OR description ILIKE $${countParamCount})`;
+            countParams.push(`%${search}%`);
+        }
+
+        const countResult = await query(countQuery, countParams);
+
+        return {
+            data: result.rows,
+            total: parseInt(countResult.rows[0].total)
+        };
     }
 
+    // Get scheme by ID
     static async getById(id) {
-        const db = await getDb();
-        return await db.get('SELECT * FROM schemes WHERE id = ?', [id]);
+        const result = await query(
+            'SELECT * FROM schemes WHERE id = $1 AND status = $2',
+            [id, 'approved']
+        );
+        return result.rows[0];
+    }
+
+    // Create new scheme (from approved crawl result)
+    static async create(data, adminId) {
+        const result = await query(
+            `INSERT INTO schemes (
+        title, description, state, region, category, ministry,
+        eligibility_criteria, start_date, end_date, documents_required,
+        source_url, source_website, status, approved_by, approved_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+      RETURNING *`,
+            [
+                data.title, data.description, data.state, data.region, data.category,
+                data.ministry, data.eligibility_criteria, data.start_date, data.end_date,
+                data.documents_required, data.source_url, data.source_website,
+                'approved', adminId
+            ]
+        );
+        return result.rows[0];
+    }
+
+    // Update scheme
+    static async update(id, data) {
+        const result = await query(
+            `UPDATE schemes SET
+        title = COALESCE($1, title),
+        description = COALESCE($2, description),
+        state = COALESCE($3, state),
+        region = COALESCE($4, region),
+        category = COALESCE($5, category),
+        ministry = COALESCE($6, ministry),
+        eligibility_criteria = COALESCE($7, eligibility_criteria),
+        start_date = COALESCE($8, start_date),
+        end_date = COALESCE($9, end_date),
+        documents_required = COALESCE($10, documents_required)
+      WHERE id = $11
+      RETURNING *`,
+            [
+                data.title, data.description, data.state, data.region, data.category,
+                data.ministry, data.eligibility_criteria, data.start_date, data.end_date,
+                data.documents_required, id
+            ]
+        );
+        return result.rows[0];
+    }
+
+    // Delete scheme
+    static async delete(id) {
+        await query('DELETE FROM schemes WHERE id = $1', [id]);
     }
 }
 
-export default SchemeModel;
+module.exports = SchemeModel;
