@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Government Information Portal</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-container">
+                <a href="/" class="logo">
+                    <i class="fas fa-landmark"></i>
+                    <span>GovPortal</span>
+                </a>
+                <ul class="nav-links">
+                    <li class="nav-item" data-module="home">
+                        <a href="#" class="active">
+                            <i class="fas fa-home"></i>
+                            <span>Home</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" data-module="schemes">
+                        <a href="#">
+                            <i class="fas fa-hand-holding-heart"></i>
+                            <span>Schemes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" data-module="tenders">
+                        <a href="#">
+                            <i class="fas fa-file-contract"></i>
+                            <span>Tenders</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" data-module="recruitments">
+                        <a href="#">
+                            <i class="fas fa-user-graduate"></i>
+                            <span>Recruitments</span>
+                        </a>
+                    </li>
+                </ul>
+                <div class="mobile-menu-btn">
+                    <i class="fas fa-bars"></i>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="content-container">
+        <!-- Dashboard Section -->
+        <div id="dashboard-view" class="section">
+            <h1>Portal Dashboard</h1>
+            <p>Welcome to the Unified Government Information Portal. Quick access to real-time updates.</p>
+
+
+            <div class="dashboard-grid">
+                <div class="dash-card" onclick="switchModule('schemes')">
+                    <div class="dash-icon"><i class="fas fa-hand-holding-heart"></i></div>
+                    <div class="dash-info">
+                        <h2 id="scheme-count">0+</h2>
+                        <p>Schemes Available</p>
+                    </div>
+                </div>
+                <div class="dash-card" onclick="switchModule('tenders')">
+                    <div class="dash-icon"><i class="fas fa-file-contract"></i></div>
+                    <div class="dash-info">
+                        <h2 id="tender-count">0+</h2>
+                        <p>Tenders Available</p>
+                    </div>
+                </div>
+                <div class="dash-card" onclick="switchModule('recruitments')">
+                    <div class="dash-icon"><i class="fas fa-user-graduate"></i></div>
+                    <div class="dash-info">
+                        <h2 id="recruitment-count">0+</h2>
+                        <p>Recruitments Available</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="state-navigation" class="section hidden">
+            <h1 id="module-title">Government Schemes</h1>
+            <p id="module-description">Select a state to view available schemes.</p>
+
+            <div class="search-sort-bar">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="main-search" placeholder="Search by name...">
+                </div>
+                <div class="sort-box">
+                    <select id="main-sort">
+                        <option value="latest">Latest First</option>
+                        <option value="a-z">Alphabetical (A-Z)</option>
+                        <option value="z-a">Alphabetical (Z-A)</option>
+                        <option value="deadline">By Deadline</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="states-grid" class="states-grid">
+                <!-- States will be loaded here -->
+            </div>
+
+            <div id="data-view" class="data-view hidden">
+                <button id="back-to-states" class="btn-back">
+                    <i class="fas fa-arrow-left"></i> Back to States
+                </button>
+                <div id="items-list" class="items-list">
+                    <!-- Items will be loaded here -->
+                </div>
+                <div id="pagination" class="pagination">
+                    <!-- Pagination controls -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 Unified Government Information Portal. All Rights Reserved.</p>
+    </footer>
+
+    <script src="js/app.js" type="module"></script>
+</body>
+
+</html>
