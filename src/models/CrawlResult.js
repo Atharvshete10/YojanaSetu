@@ -1,0 +1,139 @@
+const { query } = require('../config/database');
+
+class CrawlResultModel {
+    // Get all pending crawl results for admin review
+    static async getPending({ type, limit = 50, offset = 0 }) {
+        let queryText = `
+      SELECT cr.*, s.name as source_name, s.url as source_url
+      FROM crawl_results cr
+      LEFT JOIN sources s ON cr.source_id = s.id
+      WHERE cr.status = 'pending'
+    `;
+        const params = [];
+        let paramCount = 0;
+
+        if (type) {
+            paramCount++;
+            queryText += ` AND cr.type = $${paramCount}`;
+            params.push(type);
+        }
+
+        queryText += ' ORDER BY cr.created_at DESC';
+
+        paramCount++;
+        queryText += ` LIMIT $${paramCount}`;
+        params.push(limit);
+
+        paramCount++;
+        queryText += ` OFFSET $${paramCount}`;
+        params.push(offset);
+
+        const result = await query(queryText, params);
+
+        let countQuery = `SELECT COUNT(*) as total FROM crawl_results WHERE status = 'pending'`;
+        if (type) {
+            countQuery += ` AND type = $1`;
+            const countResult = await query(countQuery, [type]);
+            return { data: result.rows, total: parseInt(countResult.rows[0].total) };
+        }
+
+        const countResult = await query(countQuery);
+        return { data: result.rows, total: parseInt(countResult.rows[0].total) };
+    }
+
+    // Get crawl result by ID
+    static async getById(id) {
+        const result = await query(
+            `SELECT cr.*, s.name as source_name, s.url as source_url
+       FROM crawl_results cr
+       LEFT JOIN sources s ON cr.source_id = s.id
+       WHERE cr.id = $1`,
+            [id]
+        );
+        return result.rows[0];
+    }
+
+    // Create new crawl result
+    static async create(data) {
+        const result = await query(
+            `INSERT INTO crawl_results (
+        crawl_job_id, source_id, type, raw_data, normalized_data, status
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *`,
+            [
+                data.crawl_job_id,
+                data.source_id,
+                data.type,
+                JSON.stringify(data.raw_data),
+                JSON.stringify(data.normalized_data),
+                'pending'
+            ]
+        );
+        return result.rows[0];
+    }
+
+    // Update crawl result (for editing before approval)
+    static async update(id, normalizedData) {
+        const result = await query(
+            `UPDATE crawl_results 
+       SET normalized_data = $1
+       WHERE id = $2
+       RETURNING *`,
+            [JSON.stringify(normalizedData), id]
+        );
+        return result.rows[0];
+    }
+
+    // Approve crawl result
+    static async approve(id, adminId) {
+        const result = await query(
+            `UPDATE crawl_results 
+       SET status = 'approved', reviewed_by = $1, reviewed_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+            [adminId, id]
+        );
+        return result.rows[0];
+    }
+
+    // Reject crawl result
+    static async reject(id, adminId, reason) {
+        const result = await query(
+            `UPDATE crawl_results 
+       SET status = 'rejected', reviewed_by = $1, reviewed_at = NOW(), rejection_reason = $2
+       WHERE id = $3
+       RETURNING *`,
+            [adminId, reason, id]
+        );
+        return result.rows[0];
+    }
+
+    // Bulk create crawl results
+    static async bulkCreate(results) {
+        if (results.length === 0) return [];
+
+        const values = results.map((r, i) => {
+            const base = i * 5;
+            return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5})`;
+        }).join(', ');
+
+        const params = results.flatMap(r => [
+            r.crawl_job_id,
+            r.source_id,
+            r.type,
+            JSON.stringify(r.raw_data),
+            JSON.stringify(r.normalized_data)
+        ]);
+
+        const result = await query(
+            `INSERT INTO crawl_results (crawl_job_id, source_id, type, raw_data, normalized_data)
+       VALUES ${values}
+       RETURNING *`,
+            params
+        );
+
+        return result.rows;
+    }
+}
+
+module.exports = CrawlResultModel;

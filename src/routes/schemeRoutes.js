@@ -1,9 +1,25 @@
-import express from 'express';
-import { getSchemes, getSchemeById } from '../controllers/schemeController.js';
-
+const express = require('express');
 const router = express.Router();
+const schemesController = require('../controllers/schemesController');
 
-router.get('/', getSchemes);
-router.get('/:id', getSchemeById);
+/**
+ * Enhanced Schemes Routes
+ * Public API for scheme access with rich data
+ */
 
-export default router;
+// Get filter options (for dropdowns)
+router.get('/filters', schemesController.getFilterOptions);
+
+// Search schemes
+router.get('/search', schemesController.searchSchemes);
+
+// Get statistics
+router.get('/stats', schemesController.getStats);
+
+// List schemes with filters
+router.get('/', schemesController.listSchemes);
+
+// Get scheme by slug (must be after other routes to avoid conflicts)
+router.get('/:slug', schemesController.getSchemeBySlug);
+
+module.exports = router;

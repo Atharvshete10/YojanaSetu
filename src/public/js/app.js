@@ -178,24 +178,46 @@ window.changePage = (page) => {
 function setupEventListeners() {
     // Module switching
     document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', (e) => {
+        item.addEventListener('click', async (e) => {
             e.preventDefault();
-            document.querySelectorAll('.nav-item a').forEach(a => a.classList.remove('active'));
+            const module = item.dataset.module;
+
+            // Update active state
+            document.querySelectorAll('.nav-item a').forEach(link => link.classList.remove('active'));
             item.querySelector('a').classList.add('active');
 
-            currentModule = item.dataset.module;
+            // Hide all sections
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('state-navigation').classList.add('hidden');
 
-            if (currentModule === 'home') {
+            if (module === 'home') {
                 document.getElementById('dashboard-view').classList.remove('hidden');
-                document.getElementById('state-navigation').classList.add('hidden');
-                loadStats();
-            } else {
-                const config = moduleConfigs[currentModule];
-                document.getElementById('dashboard-view').classList.add('hidden');
+                loadStats(); // Changed from loadDashboardStats to loadStats as per existing function
+            } else if (module === 'schemes') {
                 document.getElementById('state-navigation').classList.remove('hidden');
-                document.getElementById('module-title').innerText = config.title;
-                document.getElementById('module-description').innerText = config.description;
-                backToStates();
+                document.getElementById('module-title').textContent = 'Government Schemes';
+                document.getElementById('module-description').textContent = 'Browse and discover government schemes tailored for you.';
+
+                // Show enhanced schemes view, hide legacy views
+                document.getElementById('schemes-enhanced-view').style.display = 'grid';
+                document.querySelectorAll('.legacy-view').forEach(el => el.style.display = 'none');
+
+                // Initialize enhanced schemes functionality
+                if (typeof initializeSchemes === 'function') {
+                    await initializeSchemes();
+                }
+            } else {
+                // For tenders and recruitments, use legacy view
+                document.getElementById('state-navigation').classList.remove('hidden');
+                document.getElementById('module-title').textContent = moduleConfigs[module].title;
+                document.getElementById('module-description').textContent = moduleConfigs[module].description;
+
+                // Hide enhanced schemes view, show legacy views
+                document.getElementById('schemes-enhanced-view').style.display = 'none';
+                document.querySelectorAll('.legacy-view').forEach(el => el.style.display = '');
+
+                currentModule = module;
+                renderStates(); // Changed from loadStates to renderStates as per existing function
             }
         });
     });
