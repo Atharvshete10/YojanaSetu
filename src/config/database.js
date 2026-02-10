@@ -1,51 +1,69 @@
-const { Pool } = require('pg');
+const sqlite3 = require('sqlite3').verbose();
 const config = require('./env');
+const path = require('path');
 
-// Create PostgreSQL connection pool
-const pool = new Pool(config.database);
-
-// Test connection
-pool.on('connect', () => {
-    console.log('✓ Connected to PostgreSQL database');
-});
-
-pool.on('error', (err) => {
-    console.error('Unexpected error on idle client', err);
-    process.exit(-1);
-});
-
-// Query helper function
-const query = async (text, params) => {
-    const start = Date.now();
-    try {
-        const res = await pool.query(text, params);
-        const duration = Date.now() - start;
-        console.log('Executed query', { text, duration, rows: res.rowCount });
-        return res;
-    } catch (error) {
-        console.error('Database query error:', error);
-        throw error;
+// Create SQLite connection
+const db = new sqlite3.Database(config.database.dbPath, (err) => {
+    if (err) {
+        console.error('Error connecting to SQLite database:', err.message);
+    } else {
+        console.log('✓ Connected to SQLite database');
     }
+});
+
+// Query helper function (mimics PG interface)
+const query = (text, params = []) => {
+    return new Promise((resolve, reject) => {
+        const start = Date.now();
+
+        // Convert $1, $2, etc. to ?, ?, etc. for SQLite
+        let sql = text;
+        if (Array.isArray(params)) {
+            sql = text.replace(/\$\d+/g, '?');
+        }
+
+        const method = sql.trim().toUpperCase().startsWith('SELECT') ? 'all' : 'run';
+
+        db[method](sql, params, function (err, rows) {
+            if (err) {
+                console.error('Database query error:', err);
+                return reject(err);
+            }
+
+            const duration = Date.now() - start;
+            // console.log('Executed query', { sql, duration, rows: Array.isArray(rows) ? rows.length : this.changes });
+
+            resolve({
+                rows: Array.isArray(rows) ? rows : [],
+                rowCount: Array.isArray(rows) ? rows.length : this.changes,
+                lastID: this.lastID
+            });
+        });
+    });
 };
 
-// Transaction helper
+// Transaction helper (Simplified for SQLite)
 const transaction = async (callback) => {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-        const result = await callback(client);
-        await client.query('COMMIT');
-        return result;
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
-    }
+    return new Promise((resolve, reject) => {
+        db.serialize(async () => {
+            try {
+                db.run('BEGIN TRANSACTION');
+                const result = await callback({
+                    query: (text, params) => query(text, params)
+                });
+                db.run('COMMIT', (err) => {
+                    if (err) reject(err);
+                    else resolve(result);
+                });
+            } catch (error) {
+                db.run('ROLLBACK', () => reject(error));
+            }
+        });
+    });
 };
 
 module.exports = {
-    pool,
+    pool: db, // Export db as pool for limited compatibility
     query,
     transaction
 };

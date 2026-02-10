@@ -17,7 +17,7 @@ class TenderModel {
 
         if (search) {
             paramCount++;
-            queryText += ` AND (tender_name ILIKE $${paramCount} OR description ILIKE $${paramCount})`;
+            queryText += ` AND (tender_name LIKE $${paramCount} OR description LIKE $${paramCount})`;
             params.push(`%${search}%`);
         }
 
@@ -53,7 +53,7 @@ class TenderModel {
 
         if (search) {
             countParamCount++;
-            countQuery += ` AND (tender_name ILIKE $${countParamCount} OR description ILIKE $${countParamCount})`;
+            countQuery += ` AND (tender_name LIKE $${countParamCount} OR description LIKE $${countParamCount})`;
             countParams.push(`%${search}%`);
         }
 
@@ -79,9 +79,8 @@ class TenderModel {
         tender_name, tender_id, reference_number, state, department, ministry,
         tender_type, published_date, opening_date, closing_date, description,
         documents_required, fee_details, source_url, source_website,
-        status, approved_by, approved_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
-      RETURNING *`,
+        status, approved_by, approved_at, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
             [
                 data.tender_name, data.tender_id, data.reference_number, data.state,
                 data.department, data.ministry, data.tender_type, data.published_date,
@@ -90,11 +89,15 @@ class TenderModel {
                 data.source_website, 'approved', adminId
             ]
         );
-        return result.rows[0];
+
+        if (result.lastID) {
+            return await this.getById(result.lastID);
+        }
+        return null;
     }
 
     static async update(id, data) {
-        const result = await query(
+        await query(
             `UPDATE tenders SET
         tender_name = COALESCE($1, tender_name),
         description = COALESCE($2, description),
@@ -102,15 +105,15 @@ class TenderModel {
         department = COALESCE($4, department),
         ministry = COALESCE($5, ministry),
         tender_type = COALESCE($6, tender_type),
-        closing_date = COALESCE($7, closing_date)
-      WHERE id = $8
-      RETURNING *`,
+        closing_date = COALESCE($7, closing_date),
+        last_updated = CURRENT_TIMESTAMP
+      WHERE id = $8`,
             [
                 data.tender_name, data.description, data.state, data.department,
                 data.ministry, data.tender_type, data.closing_date, id
             ]
         );
-        return result.rows[0];
+        return await this.getById(id);
     }
 
     static async delete(id) {

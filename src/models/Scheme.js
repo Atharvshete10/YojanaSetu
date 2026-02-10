@@ -18,7 +18,7 @@ class SchemeModel {
 
         if (search) {
             paramCount++;
-            queryText += ` AND (title ILIKE $${paramCount} OR description ILIKE $${paramCount})`;
+            queryText += ` AND (title LIKE $${paramCount} OR description LIKE $${paramCount})`;
             params.push(`%${search}%`);
         }
 
@@ -56,7 +56,7 @@ class SchemeModel {
 
         if (search) {
             countParamCount++;
-            countQuery += ` AND (title ILIKE $${countParamCount} OR description ILIKE $${countParamCount})`;
+            countQuery += ` AND (title LIKE $${countParamCount} OR description LIKE $${countParamCount})`;
             countParams.push(`%${search}%`);
         }
 
@@ -83,9 +83,8 @@ class SchemeModel {
             `INSERT INTO schemes (
         title, description, state, region, category, ministry,
         eligibility_criteria, start_date, end_date, documents_required,
-        source_url, source_website, status, approved_by, approved_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
-      RETURNING *`,
+        source_url, source_website, status, approved_by, approved_at, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
             [
                 data.title, data.description, data.state, data.region, data.category,
                 data.ministry, data.eligibility_criteria, data.start_date, data.end_date,
@@ -93,12 +92,16 @@ class SchemeModel {
                 'approved', adminId
             ]
         );
-        return result.rows[0];
+
+        if (result.lastID) {
+            return await this.getById(result.lastID);
+        }
+        return null;
     }
 
     // Update scheme
     static async update(id, data) {
-        const result = await query(
+        await query(
             `UPDATE schemes SET
         title = COALESCE($1, title),
         description = COALESCE($2, description),
@@ -109,16 +112,16 @@ class SchemeModel {
         eligibility_criteria = COALESCE($7, eligibility_criteria),
         start_date = COALESCE($8, start_date),
         end_date = COALESCE($9, end_date),
-        documents_required = COALESCE($10, documents_required)
-      WHERE id = $11
-      RETURNING *`,
+        documents_required = COALESCE($10, documents_required),
+        last_updated = CURRENT_TIMESTAMP
+      WHERE id = $11`,
             [
                 data.title, data.description, data.state, data.region, data.category,
                 data.ministry, data.eligibility_criteria, data.start_date, data.end_date,
                 data.documents_required, id
             ]
         );
-        return result.rows[0];
+        return await this.getById(id);
     }
 
     // Delete scheme

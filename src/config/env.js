@@ -1,8 +1,10 @@
+const path = require('path');
 require('dotenv').config();
 
 module.exports = {
     database: {
         connectionString: process.env.DATABASE_URL,
+        dbPath: process.env.SQLITE_PATH || path.resolve(__dirname, '../../database.sqlite'),
         ssl: {
             rejectUnauthorized: false
         },

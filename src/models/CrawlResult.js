@@ -57,9 +57,8 @@ class CrawlResultModel {
     static async create(data) {
         const result = await query(
             `INSERT INTO crawl_results (
-        crawl_job_id, source_id, type, raw_data, normalized_data, status
-      ) VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *`,
+        crawl_job_id, source_id, type, raw_data, normalized_data, status, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)`,
             [
                 data.crawl_job_id,
                 data.source_id,
@@ -69,43 +68,44 @@ class CrawlResultModel {
                 'pending'
             ]
         );
-        return result.rows[0];
+
+        if (result.lastID) {
+            return await this.getById(result.lastID);
+        }
+        return null;
     }
 
     // Update crawl result (for editing before approval)
     static async update(id, normalizedData) {
-        const result = await query(
+        await query(
             `UPDATE crawl_results 
        SET normalized_data = $1
-       WHERE id = $2
-       RETURNING *`,
+       WHERE id = $2`,
             [JSON.stringify(normalizedData), id]
         );
-        return result.rows[0];
+        return await this.getById(id);
     }
 
     // Approve crawl result
     static async approve(id, adminId) {
-        const result = await query(
+        await query(
             `UPDATE crawl_results 
-       SET status = 'approved', reviewed_by = $1, reviewed_at = NOW()
-       WHERE id = $2
-       RETURNING *`,
+       SET status = 'approved', reviewed_by = $1, reviewed_at = CURRENT_TIMESTAMP
+       WHERE id = $2`,
             [adminId, id]
         );
-        return result.rows[0];
+        return await this.getById(id);
     }
 
     // Reject crawl result
     static async reject(id, adminId, reason) {
-        const result = await query(
+        await query(
             `UPDATE crawl_results 
-       SET status = 'rejected', reviewed_by = $1, reviewed_at = NOW(), rejection_reason = $2
-       WHERE id = $3
-       RETURNING *`,
+       SET status = 'rejected', reviewed_by = $1, reviewed_at = CURRENT_TIMESTAMP, rejection_reason = $2
+       WHERE id = $3`,
             [adminId, reason, id]
         );
-        return result.rows[0];
+        return await this.getById(id);
     }
 
     // Bulk create crawl results
@@ -126,11 +126,12 @@ class CrawlResultModel {
         ]);
 
         const result = await query(
-            `INSERT INTO crawl_results (crawl_job_id, source_id, type, raw_data, normalized_data)
-       VALUES ${values}
-       RETURNING *`,
+            `INSERT INTO crawl_results (crawl_job_id, source_id, type, raw_data, normalized_data, status)
+       VALUES ${values}`,
             params
         );
+
+        return result.rows; // Note: Bulk create without RETURNING will need extra handling if rows are needed immediately
 
         return result.rows;
     }

@@ -17,7 +17,7 @@ class RecruitmentModel {
 
         if (search) {
             paramCount++;
-            queryText += ` AND (post_name ILIKE $${paramCount} OR organization ILIKE $${paramCount})`;
+            queryText += ` AND (post_name LIKE $${paramCount} OR organization LIKE $${paramCount})`;
             params.push(`%${search}%`);
         }
 
@@ -53,7 +53,7 @@ class RecruitmentModel {
 
         if (search) {
             countParamCount++;
-            countQuery += ` AND (post_name ILIKE $${countParamCount} OR organization ILIKE $${countParamCount})`;
+            countQuery += ` AND (post_name LIKE $${countParamCount} OR organization LIKE $${countParamCount})`;
             countParams.push(`%${search}%`);
         }
 
@@ -79,9 +79,8 @@ class RecruitmentModel {
         post_name, organization, state, ministry, qualification, vacancy_count,
         application_start_date, application_end_date, age_limit, selection_process,
         application_fee, documents_required, official_notification_link,
-        source_url, source_website, status, approved_by, approved_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
-      RETURNING *`,
+        source_url, source_website, status, approved_by, approved_at, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
             [
                 data.post_name, data.organization, data.state, data.ministry,
                 data.qualification, data.vacancy_count, data.application_start_date,
@@ -90,11 +89,15 @@ class RecruitmentModel {
                 data.source_url, data.source_website, 'approved', adminId
             ]
         );
-        return result.rows[0];
+
+        if (result.lastID) {
+            return await this.getById(result.lastID);
+        }
+        return null;
     }
 
     static async update(id, data) {
-        const result = await query(
+        await query(
             `UPDATE recruitments SET
         post_name = COALESCE($1, post_name),
         organization = COALESCE($2, organization),
@@ -102,15 +105,15 @@ class RecruitmentModel {
         ministry = COALESCE($4, ministry),
         qualification = COALESCE($5, qualification),
         vacancy_count = COALESCE($6, vacancy_count),
-        application_end_date = COALESCE($7, application_end_date)
-      WHERE id = $8
-      RETURNING *`,
+        application_end_date = COALESCE($7, application_end_date),
+        last_updated = CURRENT_TIMESTAMP
+      WHERE id = $8`,
             [
                 data.post_name, data.organization, data.state, data.ministry,
                 data.qualification, data.vacancy_count, data.application_end_date, id
             ]
         );
-        return result.rows[0];
+        return await this.getById(id);
     }
 
     static async delete(id) {

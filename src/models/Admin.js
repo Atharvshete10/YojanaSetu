@@ -28,11 +28,14 @@ class AdminModel {
 
         const result = await query(
             `INSERT INTO admins (email, password_hash, username, role)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, email, username as name, role, is_active, created_at`,
+       VALUES ($1, $2, $3, $4)`,
             [data.email, hashedPassword, username, data.role || 'moderator']
         );
-        return result.rows[0];
+
+        if (result.lastID) {
+            return await this.findById(result.lastID);
+        }
+        return null;
     }
 
     // Verify password
@@ -76,14 +79,13 @@ class AdminModel {
         paramCount++;
         params.push(id);
 
-        const result = await query(
+        await query(
             `UPDATE admins SET ${updates.join(', ')}
-       WHERE id = $${paramCount}
-       RETURNING id, email, username as name, role, is_active, created_at`,
+       WHERE id = $${paramCount}`,
             params
         );
 
-        return result.rows[0];
+        return await this.findById(id);
     }
 
     // Get all admins

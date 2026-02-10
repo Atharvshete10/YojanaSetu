@@ -1,19 +1,17 @@
-import { getDb } from '../database/db.js';
+const { query } = require('../config/database');
 
 class StatModel {
     static async getStats() {
-        const db = await getDb();
-
-        const schemesCount = await db.get('SELECT COUNT(*) as count FROM schemes');
-        const tendersCount = await db.get('SELECT COUNT(*) as count FROM tenders');
-        const recruitmentsCount = await db.get('SELECT COUNT(*) as count FROM recruitments');
+        const schemesCount = await query('SELECT COUNT(*) as count FROM schemes');
+        const tendersCount = await query('SELECT COUNT(*) as count FROM tenders');
+        const recruitmentsCount = await query('SELECT COUNT(*) as count FROM recruitments');
 
         return {
-            schemesCount: schemesCount.count,
-            tendersCount: tendersCount.count,
-            recruitmentsCount: recruitmentsCount.count
+            schemesCount: schemesCount.rows[0].count,
+            tendersCount: tendersCount.rows[0].count,
+            recruitmentsCount: recruitmentsCount.rows[0].count
         };
     }
 }
 
-export default StatModel;
+module.exports = StatModel;

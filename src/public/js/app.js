@@ -193,31 +193,20 @@ function setupEventListeners() {
             if (module === 'home') {
                 document.getElementById('dashboard-view').classList.remove('hidden');
                 loadStats(); // Changed from loadDashboardStats to loadStats as per existing function
-            } else if (module === 'schemes') {
-                document.getElementById('state-navigation').classList.remove('hidden');
-                document.getElementById('module-title').textContent = 'Government Schemes';
-                document.getElementById('module-description').textContent = 'Browse and discover government schemes tailored for you.';
-
-                // Show enhanced schemes view, hide legacy views
-                document.getElementById('schemes-enhanced-view').style.display = 'grid';
-                document.querySelectorAll('.legacy-view').forEach(el => el.style.display = 'none');
-
-                // Initialize enhanced schemes functionality
-                if (typeof initializeSchemes === 'function') {
-                    await initializeSchemes();
-                }
             } else {
-                // For tenders and recruitments, use legacy view
+                // For schemes, tenders and recruitments, use legacy view
                 document.getElementById('state-navigation').classList.remove('hidden');
                 document.getElementById('module-title').textContent = moduleConfigs[module].title;
                 document.getElementById('module-description').textContent = moduleConfigs[module].description;
 
                 // Hide enhanced schemes view, show legacy views
-                document.getElementById('schemes-enhanced-view').style.display = 'none';
+                if (document.getElementById('schemes-enhanced-view')) {
+                    document.getElementById('schemes-enhanced-view').style.display = 'none';
+                }
                 document.querySelectorAll('.legacy-view').forEach(el => el.style.display = '');
 
                 currentModule = module;
-                renderStates(); // Changed from loadStates to renderStates as per existing function
+                renderStates();
             }
         });
     });
