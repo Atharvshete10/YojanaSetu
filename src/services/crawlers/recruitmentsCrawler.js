@@ -21,7 +21,8 @@ class RecruitmentsCrawler extends BaseCrawler {
 
             logger.debug(`Fetching recruitments for ${state} from ${url}`);
 
-            const html = await this.fetch(url);
+            const response = await this.fetchWithRetry(url);
+            const html = response.data;
             return this.parseHTMLResponse(html, state);
 
         } catch (error) {

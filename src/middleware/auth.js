@@ -18,7 +18,7 @@ const verifyToken = async (req, res, next) => {
 
         // Check if admin exists and is active
         const result = await query(
-            'SELECT id, email, name, role, is_active FROM admins WHERE id = $1',
+            'SELECT id, email, username, role, is_active FROM admins WHERE id = $1',
             [decoded.id]
         );
 
@@ -30,6 +30,7 @@ const verifyToken = async (req, res, next) => {
         }
 
         const admin = result.rows[0];
+        admin.name = admin.username; // Map for consistency
 
         if (!admin.is_active) {
             return res.status(403).json({

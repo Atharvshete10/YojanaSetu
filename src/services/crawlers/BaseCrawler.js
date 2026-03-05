@@ -210,23 +210,23 @@ class BaseCrawler {
     // Create crawl job
     async createJob() {
         const result = await query(
-            `INSERT INTO crawl_jobs (source_id, status, started_at)
-       VALUES ($1, $2, NOW())
-       RETURNING id`,
-            [this.source.id, 'pending']
+            `INSERT INTO crawler_jobs (source_id, job_type, status, started_at)
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`,
+            [this.source.id, this.source.type, 'pending']
         );
-        return result.rows[0].id;
+        return result.lastID;
     }
 
     // Update job status
     async updateJobStatus(status, errorMessage = null) {
         await query(
-            `UPDATE crawl_jobs 
+            `UPDATE crawler_jobs 
        SET status = $1, 
-           completed_at = CASE WHEN $1 IN ('completed', 'failed') THEN NOW() ELSE completed_at END,
-           records_found = $2,
-           records_saved = $3,
-           error_message = $4
+           completed_at = CASE WHEN $1 IN ('completed', 'failed') THEN CURRENT_TIMESTAMP ELSE completed_at END,
+           total_fetched = $2,
+           success_count = $3,
+           error_message = $4,
+           last_updated = CURRENT_TIMESTAMP
        WHERE id = $5`,
             [status, this.recordsFound, this.recordsSaved, errorMessage, this.jobId]
         );
@@ -234,7 +234,7 @@ class BaseCrawler {
         // Update source last_crawled_at
         if (status === 'completed') {
             await query(
-                'UPDATE sources SET last_crawled_at = NOW() WHERE id = $1',
+                'UPDATE sources SET last_crawled_at = CURRENT_TIMESTAMP WHERE id = $1',
                 [this.source.id]
             );
         }

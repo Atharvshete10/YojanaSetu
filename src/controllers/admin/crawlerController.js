@@ -61,7 +61,7 @@ exports.getCrawlJobs = async (req, res, next) => {
 
         let queryText = `
       SELECT cj.*, s.name as source_name, s.type as source_type
-      FROM crawl_jobs cj
+      FROM crawler_jobs cj
       LEFT JOIN sources s ON cj.source_id = s.id
       WHERE 1=1
     `;
@@ -80,11 +80,11 @@ exports.getCrawlJobs = async (req, res, next) => {
             params.push(sourceId);
         }
 
-        queryText += ' ORDER BY cj.created_at DESC';
+        queryText += ' ORDER BY started_at DESC';
 
         paramCount++;
         queryText += ` LIMIT $${paramCount}`;
-        params.push(limit);
+        params.push(parseInt(limit));
 
         paramCount++;
         queryText += ` OFFSET $${paramCount}`;
@@ -93,7 +93,7 @@ exports.getCrawlJobs = async (req, res, next) => {
         const result = await query(queryText, params);
 
         // Get total count
-        let countQuery = 'SELECT COUNT(*) as total FROM crawl_jobs WHERE 1=1';
+        let countQuery = 'SELECT COUNT(*) as total FROM crawler_jobs WHERE 1=1';
         const countParams = [];
         let countParamCount = 0;
 
@@ -134,7 +134,7 @@ exports.getCrawlJobById = async (req, res, next) => {
 
         const result = await query(
             `SELECT cj.*, s.name as source_name, s.type as source_type, s.url as source_url
-       FROM crawl_jobs cj
+       FROM crawler_jobs cj
        LEFT JOIN sources s ON cj.source_id = s.id
        WHERE cj.id = $1`,
             [id]
@@ -162,7 +162,6 @@ exports.getCrawlJobById = async (req, res, next) => {
 // ============================================
 
 const SchemesCrawler = require('../../services/crawlers/schemesCrawler');
-const { Pool } = require('pg');
 
 // Global crawler instance (singleton pattern)
 let mySchemeCrawlerInstance = null;
@@ -184,25 +183,17 @@ exports.startMySchemeCrawler = async (req, res, next) => {
         }
 
         // Check if crawler is already running
-        const pool = new Pool({
-            connectionString: process.env.DATABASE_URL,
-            ssl: { rejectUnauthorized: false }
-        });
-
-        const statusCheck = await pool.query(
+        const statusCheck = await query(
             'SELECT is_running, current_job_id FROM crawler_status WHERE id = 1'
         );
 
         if (statusCheck.rows[0]?.is_running) {
-            await pool.end();
             return res.status(409).json({
                 success: false,
                 message: 'Crawler is already running',
                 job_id: statusCheck.rows[0].current_job_id
             });
         }
-
-        await pool.end();
 
         // Create new crawler instance
         mySchemeCrawlerInstance = new SchemesCrawler();
@@ -217,16 +208,9 @@ exports.startMySchemeCrawler = async (req, res, next) => {
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Get the job ID
-        const pool2 = new Pool({
-            connectionString: process.env.DATABASE_URL,
-            ssl: { rejectUnauthorized: false }
-        });
-
-        const jobResult = await pool2.query(
+        const jobResult = await query(
             'SELECT current_job_id FROM crawler_status WHERE id = 1'
         );
-
-        await pool2.end();
 
         // Log action
         await query(
@@ -267,7 +251,7 @@ exports.pauseMySchemeCrawler = async (req, res, next) => {
         // Update job status
         await query(`
             UPDATE crawler_jobs
-            SET status = 'paused', last_updated = NOW()
+            SET status = 'paused', last_updated = CURRENT_TIMESTAMP
             WHERE id = (SELECT current_job_id FROM crawler_status WHERE id = 1)
         `);
 
@@ -301,7 +285,7 @@ exports.stopMySchemeCrawler = async (req, res, next) => {
         // Update job status
         await query(`
             UPDATE crawler_jobs
-            SET status = 'stopped', completed_at = NOW(), last_updated = NOW()
+            SET status = 'stopped', completed_at = CURRENT_TIMESTAMP, last_updated = CURRENT_TIMESTAMP
             WHERE id = (SELECT current_job_id FROM crawler_status WHERE id = 1)
         `);
 
@@ -326,34 +310,34 @@ exports.stopMySchemeCrawler = async (req, res, next) => {
  */
 exports.getMySchemeCrawlerStatus = async (req, res, next) => {
     try {
-        const pool = new Pool({
-            connectionString: process.env.DATABASE_URL,
-            ssl: { rejectUnauthorized: false }
-        });
-
         // Get global status
-        const statusResult = await pool.query(`
+        const statusResult = await query(`
             SELECT * FROM crawler_status WHERE id = 1
         `);
 
         const status = statusResult.rows[0];
 
+        if (!status) {
+            return res.status(500).json({
+                success: false,
+                message: 'Crawler status not initialized'
+            });
+        }
+
         // Get current job details if running
         let currentJob = null;
         if (status.is_running && status.current_job_id) {
-            const jobResult = await pool.query(`
+            const jobResult = await query(`
                 SELECT * FROM crawler_jobs WHERE id = $1
             `, [status.current_job_id]);
 
             currentJob = jobResult.rows[0];
         }
 
-        await pool.end();
-
         res.json({
             success: true,
             status: {
-                is_running: status.is_running,
+                is_running: !!status.is_running,
                 last_run_at: status.last_run_at,
                 last_success_at: status.last_success_at,
                 last_error: status.last_error,

@@ -182,6 +182,9 @@ function setupEventListeners() {
             e.preventDefault();
             const module = item.dataset.module;
 
+            // Reset navigation state when switching modules
+            resetNavigation();
+
             // Update active state
             document.querySelectorAll('.nav-item a').forEach(link => link.classList.remove('active'));
             item.querySelector('a').classList.add('active');
@@ -192,21 +195,36 @@ function setupEventListeners() {
 
             if (module === 'home') {
                 document.getElementById('dashboard-view').classList.remove('hidden');
-                loadStats(); // Changed from loadDashboardStats to loadStats as per existing function
+                loadStats();
             } else {
-                // For schemes, tenders and recruitments, use legacy view
+                // For schemes, tenders and recruitments, use appropriate view
                 document.getElementById('state-navigation').classList.remove('hidden');
                 document.getElementById('module-title').textContent = moduleConfigs[module].title;
                 document.getElementById('module-description').textContent = moduleConfigs[module].description;
 
-                // Hide enhanced schemes view, show legacy views
-                if (document.getElementById('schemes-enhanced-view')) {
-                    document.getElementById('schemes-enhanced-view').style.display = 'none';
-                }
-                document.querySelectorAll('.legacy-view').forEach(el => el.style.display = '');
-
                 currentModule = module;
-                renderStates();
+
+                if (module === 'schemes') {
+                    // Show enhanced schemes view
+                    if (document.getElementById('schemes-enhanced-view')) {
+                        document.getElementById('schemes-enhanced-view').style.display = 'flex';
+                    }
+                    // Hide legacy elements
+                    document.querySelectorAll('.legacy-view').forEach(el => el.style.display = 'none');
+                    // Initialize schemes if needed
+                    if (window.initializeSchemes) window.initializeSchemes();
+                } else {
+                    // For tenders and recruitments, use legacy view
+                    if (document.getElementById('schemes-enhanced-view')) {
+                        document.getElementById('schemes-enhanced-view').style.display = 'none';
+                    }
+                    document.querySelectorAll('.legacy-view').forEach(el => {
+                        if (!el.classList.contains('data-view')) {
+                            el.style.display = '';
+                        }
+                    });
+                    renderStates();
+                }
             }
         });
     });
@@ -226,6 +244,30 @@ function setupEventListeners() {
 
     // Back button
     document.getElementById('back-to-states').addEventListener('click', backToStates);
+}
+
+function resetNavigation() {
+    currentState = null;
+    currentPage = 1;
+    currentSearch = '';
+    currentSort = 'latest';
+
+    // Reset UI elements
+    const itemsList = document.getElementById('items-list');
+    if (itemsList) itemsList.innerHTML = '';
+
+    const pagination = document.getElementById('pagination');
+    if (pagination) pagination.innerHTML = '';
+
+    const searchInput = document.getElementById('main-search');
+    if (searchInput) searchInput.value = '';
+
+    const sortSelect = document.getElementById('main-sort');
+    if (sortSelect) sortSelect.value = 'latest';
+
+    // Reset visibility for legacy view
+    document.getElementById('states-grid').classList.remove('hidden');
+    document.getElementById('data-view').classList.add('hidden');
 }
 
 function backToStates() {

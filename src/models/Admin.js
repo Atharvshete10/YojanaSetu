@@ -5,19 +5,27 @@ class AdminModel {
     // Find admin by email
     static async findByEmail(email) {
         const result = await query(
-            'SELECT id, email, username as name, role, is_active, created_at, password_hash FROM admins WHERE email = $1',
+            'SELECT * FROM admins WHERE email = $1',
             [email]
         );
-        return result.rows[0];
+        const admin = result.rows[0];
+        if (admin) {
+            admin.name = admin.username; // Map username to name for controller
+        }
+        return admin;
     }
 
     // Find admin by ID
     static async findById(id) {
         const result = await query(
-            'SELECT id, email, username as name, role, is_active, created_at FROM admins WHERE id = $1',
+            'SELECT * FROM admins WHERE id = $1',
             [id]
         );
-        return result.rows[0];
+        const admin = result.rows[0];
+        if (admin) {
+            admin.name = admin.username;
+        }
+        return admin;
     }
 
     // Create new admin
@@ -91,9 +99,12 @@ class AdminModel {
     // Get all admins
     static async getAll() {
         const result = await query(
-            'SELECT id, email, username as name, role, is_active, created_at FROM admins ORDER BY created_at DESC'
+            'SELECT * FROM admins ORDER BY created_at DESC'
         );
-        return result.rows;
+        return result.rows.map(admin => ({
+            ...admin,
+            name: admin.username
+        }));
     }
 }
 

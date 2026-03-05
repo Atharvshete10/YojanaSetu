@@ -1,6 +1,6 @@
-const BaseCrawler = require('./baseCrawler');
+const BaseCrawler = require('./BaseCrawler');
 const logger = require('../logger');
-const { Pool } = require('pg');
+const { query } = require('../../config/database');
 const puppeteer = require('puppeteer');
 require('dotenv').config();
 
@@ -9,8 +9,9 @@ require('dotenv').config();
  * Supports batch processing, pause/resume, and rich data extraction
  */
 class SchemesCrawler extends BaseCrawler {
-    constructor() {
-        super('schemes');
+    constructor(source) {
+        // Fallback for manual trigger if source not provided
+        super(source || { id: 1, type: 'schemes', name: 'MyScheme' });
         this.apiBase = process.env.MYSCHEME_API_BASE;
         this.apiKey = process.env.MYSCHEME_API_KEY;
         this.batchSize = parseInt(process.env.CRAWLER_BATCH_SIZE) || 50;
@@ -20,12 +21,6 @@ class SchemesCrawler extends BaseCrawler {
         this.isPaused = false;
         this.isStopped = false;
         this.currentJobId = null;
-
-        // Database pool
-        this.pool = new Pool({
-            connectionString: process.env.DATABASE_URL,
-            ssl: { rejectUnauthorized: false }
-        });
     }
 
     /**
@@ -66,7 +61,7 @@ class SchemesCrawler extends BaseCrawler {
             logger.info(`Found ${slugs.length} schemes to process.`);
 
             // Update estimated total
-            await this.pool.query('UPDATE crawler_jobs SET estimated_total = $1 WHERE id = $2', [slugs.length, this.currentJobId]);
+            await query('UPDATE crawler_jobs SET estimated_total = $1 WHERE id = $2', [slugs.length, this.currentJobId]);
 
             // Step 2: Extract Data
             let totalFetched = 0;
@@ -92,10 +87,10 @@ class SchemesCrawler extends BaseCrawler {
                     if (success) {
                         totalFetched++;
                         // Increment success count
-                        await this.pool.query('UPDATE crawler_jobs SET success_count = success_count + 1 WHERE id = $1', [this.currentJobId]);
+                        await query('UPDATE crawler_jobs SET success_count = success_count + 1 WHERE id = $1', [this.currentJobId]);
                     } else {
                         // Increment failed count
-                        await this.pool.query('UPDATE crawler_jobs SET failed_count = failed_count + 1 WHERE id = $1', [this.currentJobId]);
+                        await query('UPDATE crawler_jobs SET failed_count = failed_count + 1 WHERE id = $1', [this.currentJobId]);
                     }
 
                     // Respectful delay
@@ -198,7 +193,7 @@ class SchemesCrawler extends BaseCrawler {
             const schemeData = response.data.data;
 
             // Normalize
-            const normalized = this.normalizeScheme(schemeData); // Changed from this.normalize to this.normalizeScheme
+            const normalized = this.normalizeScheme(schemeData);
 
             if (normalized) {
                 // Save to DB
@@ -263,7 +258,7 @@ class SchemesCrawler extends BaseCrawler {
      * Fetch scheme documents
      */
     async fetchSchemeDocuments(schemeId) {
-        const url = `${this.apiBase} /${schemeId}/documents ? lang = en`;
+        const url = `${this.apiBase}/${schemeId}/documents?lang=en`;
         return await this.fetchWithRetry(url, {
             headers: { 'x-api-key': this.apiKey }
         });
@@ -273,7 +268,7 @@ class SchemesCrawler extends BaseCrawler {
      * Fetch scheme FAQs
      */
     async fetchSchemeFAQs(schemeId) {
-        const url = `${this.apiBase} /${schemeId}/faqs ? lang = en`;
+        const url = `${this.apiBase}/${schemeId}/faqs?lang=en`;
         return await this.fetchWithRetry(url, {
             headers: { 'x-api-key': this.apiKey }
         });
@@ -283,7 +278,7 @@ class SchemesCrawler extends BaseCrawler {
      * Fetch application channels
      */
     async fetchApplicationChannels(schemeId) {
-        const url = `${this.apiBase} /${schemeId}/applicationchannel`;
+        const url = `${this.apiBase}/${schemeId}/applicationchannel`;
         return await this.fetchWithRetry(url, {
             headers: { 'x-api-key': this.apiKey }
         });
@@ -338,6 +333,7 @@ class SchemesCrawler extends BaseCrawler {
 
             // Geographic coverage
             applicable_states: this.determineStates(basicDetails),
+            state: this.determineStates(basicDetails)[0], // Use first state for search/filter
 
             // Multilingual
             lang: 'en',
@@ -361,9 +357,6 @@ class SchemesCrawler extends BaseCrawler {
         if (langData.schemeContent?.contactInfo) {
             return langData.schemeContent.contactInfo;
         }
-
-        // Parse from description if needed
-        // This is a placeholder - actual implementation would parse text
 
         return contacts;
     }
@@ -407,7 +400,7 @@ class SchemesCrawler extends BaseCrawler {
     async saveScheme(scheme) {
         try {
             // Check if scheme already exists
-            const existing = await this.pool.query(
+            const existing = await query(
                 'SELECT id FROM schemes WHERE external_id = $1',
                 [scheme.external_id]
             );
@@ -418,34 +411,34 @@ class SchemesCrawler extends BaseCrawler {
             }
 
             // Insert new scheme
-            await this.pool.query(`
+            await query(`
                 INSERT INTO schemes(
         external_id, slug, title, short_title, description, detailed_description,
         ministry, department, category, sub_category, level, scheme_type,
         benefits, eligibility, application_process, documents_required, faqs,
         tags, target_beneficiaries, open_date, close_date,
-        application_url, contact_info, "references", applicable_states,
+        application_url, contact_info, "references", applicable_states, state,
         lang, translations, raw_data, status
     ) VALUES(
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
+        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30
     )
             `, [
                 scheme.external_id, scheme.slug, scheme.title, scheme.short_title,
                 scheme.description, JSON.stringify(scheme.detailed_description),
-                scheme.ministry, scheme.department, scheme.category, scheme.sub_category,
+                scheme.ministry, scheme.department, scheme.category, JSON.stringify(scheme.sub_category),
                 scheme.level, scheme.scheme_type,
                 JSON.stringify(scheme.benefits), JSON.stringify(scheme.eligibility),
                 JSON.stringify(scheme.application_process), JSON.stringify(scheme.documents_required),
                 JSON.stringify(scheme.faqs),
-                scheme.tags, scheme.target_beneficiaries, scheme.open_date, scheme.close_date,
+                JSON.stringify(scheme.tags), JSON.stringify(scheme.target_beneficiaries), scheme.open_date, scheme.close_date,
                 scheme.application_url, JSON.stringify(scheme.contact_info),
-                JSON.stringify(scheme.references), scheme.applicable_states,
+                JSON.stringify(scheme.references), JSON.stringify(scheme.applicable_states), scheme.state,
                 scheme.lang, JSON.stringify(scheme.translations),
                 JSON.stringify(scheme.raw_data), scheme.status
             ]);
 
-            logger.info(`Saved scheme: ${scheme.title} `);
+            logger.info(`Saved scheme: ${scheme.title}`);
             return 'success';
 
         } catch (error) {
@@ -459,72 +452,70 @@ class SchemesCrawler extends BaseCrawler {
     // ============================================
 
     async createCrawlerJob() {
-        const result = await this.pool.query(`
+        const result = await query(`
             INSERT INTO crawler_jobs(job_type, status, batch_size)
-VALUES($1, $2, $3)
-            RETURNING id
+            VALUES($1, $2, $3)
     `, ['schemes', 'running', this.batchSize]);
 
-        return result.rows[0].id;
+        return result.lastID;
     }
 
     async updateJobProgress(jobId, progress) {
-        await this.pool.query(`
+        await query(`
             UPDATE crawler_jobs
-            SET current_batch = $1, total_fetched = $2, last_updated = NOW()
+            SET current_batch = $1, total_fetched = $2, last_updated = CURRENT_TIMESTAMP
             WHERE id = $3
     `, [progress.current_batch, progress.total_fetched, jobId]);
     }
 
     async updateJobCounts(jobId, counts) {
-        await this.pool.query(`
+        await query(`
             UPDATE crawler_jobs
-            SET success_count = $1, failed_count = $2, duplicate_count = $3, last_updated = NOW()
+            SET success_count = $1, failed_count = $2, duplicate_count = $3, last_updated = CURRENT_TIMESTAMP
             WHERE id = $4
     `, [counts.success_count, counts.failed_count, counts.duplicate_count, jobId]);
     }
 
     async incrementErrorCount(jobId) {
-        await this.pool.query(`
+        await query(`
             UPDATE crawler_jobs
-            SET error_count = error_count + 1, last_updated = NOW()
+            SET error_count = error_count + 1, last_updated = CURRENT_TIMESTAMP
             WHERE id = $1
     `, [jobId]);
     }
 
     async completeCrawlerJob(jobId, totalFetched) {
-        await this.pool.query(`
+        await query(`
             UPDATE crawler_jobs
-            SET status = 'completed', completed_at = NOW(), total_fetched = $1, last_updated = NOW()
+            SET status = 'completed', completed_at = CURRENT_TIMESTAMP, total_fetched = $1, last_updated = CURRENT_TIMESTAMP
             WHERE id = $2
     `, [totalFetched, jobId]);
     }
 
     async failCrawlerJob(jobId, errorMessage) {
-        await this.pool.query(`
+        await query(`
             UPDATE crawler_jobs
-            SET status = 'failed', error_message = $1, completed_at = NOW(), last_updated = NOW()
+            SET status = 'failed', error_message = $1, completed_at = CURRENT_TIMESTAMP, last_updated = CURRENT_TIMESTAMP
             WHERE id = $2
     `, [errorMessage, jobId]);
     }
 
     async updateGlobalStatus(isRunning, jobId = null, error = null) {
-        await this.pool.query(`
+        await query(`
             UPDATE crawler_status
             SET
                 is_running = $1,
                 current_job_id = $2,
-                last_run_at = NOW(),
-                last_success_at = CASE WHEN $3::text IS NULL THEN NOW() ELSE last_success_at END,
-                last_error = $3::text,
+                last_run_at = CURRENT_TIMESTAMP,
+                last_success_at = CASE WHEN $3 IS NULL THEN CURRENT_TIMESTAMP ELSE last_success_at END,
+                last_error = $3,
                 total_runs = total_runs + 1,
-                total_success = CASE WHEN $3::text IS NULL THEN total_success + 1 ELSE total_success END,
-                total_failures = CASE WHEN $3::text IS NOT NULL THEN total_failures + 1 ELSE total_failures END,
-                updated_at = NOW()
+                total_success = CASE WHEN $3 IS NULL THEN total_success + 1 ELSE total_success END,
+                total_failures = CASE WHEN $3 IS NOT NULL THEN total_failures + 1 ELSE total_failures END,
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = 1
-        `, [isRunning, jobId, error]);
+        `, [isRunning ? 1 : 0, jobId, error]);
     }
-
 
     // ============================================
     // Control Methods

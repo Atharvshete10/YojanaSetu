@@ -18,10 +18,31 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSchemes();
 });
 
+let isInitialized = false;
+
 async function initializeSchemes() {
+    // Reset state
+    currentFilters = {};
+    currentPage = 1;
+
+    // Reset search input UI
+    const searchInput = document.getElementById('scheme-search');
+    if (searchInput) searchInput.value = '';
+
+    // Reset filter dropdowns UI
+    const filterSelects = ['filter-state', 'filter-category', 'filter-ministry', 'filter-level'];
+    filterSelects.forEach(id => {
+        const select = document.getElementById(id);
+        if (select) select.value = '';
+    });
+
     await loadFilterOptions();
     await loadSchemes();
-    setupEventListeners();
+
+    if (!isInitialized) {
+        setupEventListeners();
+        isInitialized = true;
+    }
 }
 
 // ============================================

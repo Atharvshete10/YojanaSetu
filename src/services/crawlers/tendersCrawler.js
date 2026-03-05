@@ -15,7 +15,8 @@ class TendersCrawler extends BaseCrawler {
 
             logger.debug(`Fetching tenders for ${state} from ${url}`);
 
-            const html = await this.fetch(url);
+            const response = await this.fetchWithRetry(url);
+            const html = response.data;
             return this.parseHTMLResponse(html, state);
 
         } catch (error) {

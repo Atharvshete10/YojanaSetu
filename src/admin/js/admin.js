@@ -91,6 +91,16 @@ async function apiCall(endpoint, options = {}) {
             ...options.headers
         }
     });
+
+    if (res.status === 401) {
+        // Token expired or invalid
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_name');
+        token = null;
+        showLogin();
+        return { success: false, message: 'Session expired. Please log in again.' };
+    }
+
     return await res.json();
 }
 
