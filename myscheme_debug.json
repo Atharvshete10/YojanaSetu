@@ -1,0 +1,11 @@
+{
+  "status": "Failure",
+  "statusCode": 412,
+  "data": "{}",
+  "errorDescription": "Input data validation failed",
+  "error": [
+    {
+      "message": "PlanExecutor error during aggregation :: caused by :: Sort exceeded memory limit of 104857600 bytes, but did not opt in to external sorting."
+    }
+  ]
+}

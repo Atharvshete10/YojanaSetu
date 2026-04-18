@@ -1,0 +1,13 @@
+<input name="font_small" value="A-" id="font_small" title="Normal Font Size" class="fontScaler normal font-small current" type="button">
+<input name="font_normal" value="A" id="font_normal" title="Normal Font Size" class="fontScaler normal font-normal current" type="button">
+<input name="font_large" value="A+" id="font_large" title="Increase Font Size" class="fontScaler large font-large" type="button">
+<input type="checkbox" id="modecheck" onclick="modeChange()">
+<input aria-label="Search Tender: Central Select Location" data-drupal-selector="edit-s-location" type="text" id="edit-s-location" name="s_location" value="" size="60" maxlength="128" class="form-text">
+<input autocomplete="off" id="skeyword" aria-label="Search Tender: Central Search Keywords" data-drupal-selector="edit-s-keyword" type="text" name="s_keyword" value="" size="60" maxlength="128" class="form-text">
+<input data-drupal-selector="edit-captcha-sid" type="hidden" name="captcha_sid" value="441016746">
+<input data-drupal-selector="edit-captcha-token" type="hidden" name="captcha_token" value="k4SAeIMQk2kp1QJxCNNefUSJGDx8SpgC6VMtO2jiw70">
+<input autocomplete="off" style="color: #5464dc;font-weight: bold" data-drupal-selector="edit-captcha-response" aria-describedby="edit-captcha-response--description" type="text" id="edit-captcha-response" name="captcha_response" value="" size="15" maxlength="128" class="form-text required" required="required" aria-required="true">
+<input id="btnSearch" data-drupal-selector="edit-save" type="submit" name="op" value="Search" class="button js-form-submit form-submit">
+<input class="button" type="reset" value="Cancel" data-drupal-selector="edit-reset">
+<input autocomplete="off" data-drupal-selector="form-o2ce7dp-mspmz847jiaqz-rqn-pmnizinjq9cxhql8o" type="hidden" name="form_build_id" value="form-o2Ce7dp_mspmZ847Jiaqz-RQN-PMnizINjQ9CXHql8o">
+<input data-drupal-selector="edit-tendersearch-form" type="hidden" name="form_id" value="tendersearch_form">

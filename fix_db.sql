@@ -1,0 +1,1 @@
+UPDATE tenders SET extended_details = '{"Notice": "This tender was crawled before the extended details feature was introduced. Please run the crawler again to fetch full rows."}' WHERE extended_details IS NULL;

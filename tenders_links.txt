@@ -1,0 +1,22 @@
+[
+  {
+    "tender_id": "Construction of RCC main garland drain from plot no-201 to Church at Chhota Bhorai (Five tola) of Bara Simra rehab site under Rajmahal Area./ECL/RJML/AGM/AE(C)/ e-Ten/25-26/710 Dt-19.03.2026/2026_ECL_357119_1",
+    "source_url": "https://eprocure.gov.in/cppp/tendersfullview/MTM2MjI3MDI=A13h1OGQ2NzAxYTMwZTJhNTIxMGNiNmEwM2EzNmNhYWZhODk=A13h1OGQ2NzAxYTMwZTJhNTIxMGNiNmEwM2EzNmNhYWZhODk=A13h1MTc3MzkyNjgzNg==A13h1RUNML1JKTUwvQUdNL0FFKEMpLyBlLVRlbi8yNS0yNi83MTAgRHQtMTkuMDMuMjAyNg==A13h1MjAyNl9FQ0xfMzU3MTE5XzE="
+  },
+  {
+    "tender_id": "326/EE (E)/DED-21/2025-26/326/EE (E)/DED-21/2025-26/147694",
+    "source_url": "https://eprocure.gov.in/cppp/tendersfullview/MTM2MjQ1NjI=A13h1OGQ2NzAxYTMwZTJhNTIxMGNiNmEwM2EzNmNhYWZhODk=A13h1OGQ2NzAxYTMwZTJhNTIxMGNiNmEwM2EzNmNhYWZhODk=A13h1MTc3MzkyNTE1MA==A13h1MzI2L0VFIChFKS9ERUQtMjEvMjAyNS0yNg==A13h1MTQ3Njk0"
+  },
+  {
+    "tender_id": "Comparison Microscope/NFSU/Goa/PE/3(3)/149/2025-26/2026_NFSU_902910_1",
+    "source_url": "https://eprocure.gov.in/cppp/tendersfullview/MTM2MTkzOTM=A13h1OGQ2NzAxYTMwZTJhNTIxMGNiNmEwM2EzNmNhYWZhODk=A13h1OGQ2NzAxYTMwZTJhNTIxMGNiNmEwM2EzNmNhYWZhODk=A13h1MTc3MzgyNjY4Mw==A13h1TkZTVS9Hb2EvUEUvMygzKS8xNDkvMjAyNS0yNg==A13h1MjAyNl9ORlNVXzkwMjkxMF8x"
+  },
+  {
+    "tender_id": "Optical Table/2025260906/MM-14/PHY/887/2026_IITR_902926_1",
+    "source_url": "https://eprocure.gov.in/cppp/tendersfullview/MTM2MTk0MDY=A13h1OGQ2NzAxYTMwZTJhNTIxMGNiNmEwM2EzNmNhYWZhODk=A13h1OGQ2NzAxYTMwZTJhNTIxMGNiNmEwM2EzNmNhYWZhODk=A13h1MTc3MzgyNjY4Mw==A13h1MjAyNTI2MDkwNi9NTS0xNC9QSFkvODg3A13h1MjAyNl9JSVRSXzkwMjkyNl8x"
+  },
+  {
+    "tender_id": "23(63)/EE/BBSR-III/CPWD/2026/495-499(H)/23(63)/EE/BBSR-III/CPWD/2026/495-499(H)/147130",
+    "source_url": "https://eprocure.gov.in/cppp/tendersfullview/MTM2MTUwMjQ=A13h1OGQ2NzAxYTMwZTJhNTIxMGNiNmEwM2EzNmNhYWZhODk=A13h1OGQ2NzAxYTMwZTJhNTIxMGNiNmEwM2EzNmNhYWZhODk=A13h1MTc3MzY0ODY4NA==A13h1MjMoNjMpL0VFL0JCU1ItSUlJL0NQV0QvMjAyNi80OTUtNDk5KEgpA13h1MTQ3MTMw"
+  }
+]
